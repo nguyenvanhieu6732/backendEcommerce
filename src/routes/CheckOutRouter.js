@@ -1,5 +1,6 @@
 const express = require("express")
 const router = express.Router()
+const moment = require('moment');
 
 router.post('/create_payment_url', function (req, res, next) {
     var ipAddr = req.headers['x-forwarded-for'] ||
@@ -7,30 +8,29 @@ router.post('/create_payment_url', function (req, res, next) {
         req.socket.remoteAddress ||
         req.connection.socket.remoteAddress;
 
-    const dayjs = require('dayjs');
-
     var env = {
         vnp_TmnCode: "WNXF53ET",
-        vnp_HashSecret: "M4U4U2IEAZ80PBSB6VMVDY7JG4O2CO7S",
+        vnp_HashSecret: "SVE5NMOWSBFBA3JH7M8ZQCR0L0QZMEZN",
         vnp_Url: "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html",
         vnp_Api: "https://sandbox.vnpayment.vn/merchant_webapi/api/transaction",
         vnp_ReturnUrl: "http://localhost:3000/cart/vnpay_return",
       };
-
-      var tmnCode = env.vnp_TmnCode;
-      var secretKey = env.vnp_HashSecret;
-      var vnpUrl = env.vnp_Url;
-      var returnUrl = env.vnp_ReturnUrl;
-
-    var createDate = dayjs().format('yyyymmddHHmmss');
-    var orderId = dayjs().format('HHmmss');
+    
+    var tmnCode = env.vnp_TmnCode;
+    var secretKey = env.vnp_HashSecret
+    var vnpUrl = env.vnp_Url
+    var returnUrl = env.vnp_ReturnUrl
+    let date = new Date();
+    let createDate = moment(date).format('YYYYMMDDHHmmss');
+    let expireDate = moment(date).add(5, 'minutes').format('YYYYMMDDHHmmss');
+    let orderId = moment(date).format('DDHHmmss');
     var amount = req.body.amount;
     var bankCode = req.body.bankCode;
     
     var orderInfo = req.body.orderDescription;
     var orderType = req.body.orderType;
     var locale = req.body.language;
-    if(locale === null || locale === ''){
+    if(locale === null || locale === '' || locale == undefined){
         locale = 'vn';
     }
     var currCode = 'VND';
@@ -48,6 +48,7 @@ router.post('/create_payment_url', function (req, res, next) {
     vnp_Params['vnp_ReturnUrl'] = returnUrl;
     vnp_Params['vnp_IpAddr'] = ipAddr;
     vnp_Params['vnp_CreateDate'] = createDate;
+    vnp_Params['vnp_ExpireDate'] = expireDate;
     if(bankCode !== null && bankCode !== ''){
         vnp_Params['vnp_BankCode'] = bankCode;
     }
@@ -72,9 +73,10 @@ router.post('/create_payment_url', function (req, res, next) {
 
     var querystring = require('qs');
     var signData = querystring.stringify(vnp_Params, { encode: false });
+    console.log("signData" + signData)
     var crypto = require("crypto");     
     var hmac = crypto.createHmac("sha512", secretKey);
-    var signed = hmac.update(new Buffer(signData, 'utf-8')).digest("hex"); 
+    var signed = hmac.update(Buffer.from(signData, 'utf-8')).digest("hex");
     vnp_Params['vnp_SecureHash'] = signed;
     vnpUrl += '?' + querystring.stringify(vnp_Params, { encode: false });
 
@@ -110,7 +112,7 @@ router.get('/vnpay_return', function (req, res, next) {
 
     var env = {
         vnp_TmnCode: "WNXF53ET",
-        vnp_HashSecret: "M4U4U2IEAZ80PBSB6VMVDY7JG4O2CO7S",
+        vnp_HashSecret: "SVE5NMOWSBFBA3JH7M8ZQCR0L0QZMEZN",
         vnp_Url: "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html",
         vnp_Api: "https://sandbox.vnpayment.vn/merchant_webapi/api/transaction",
         vnp_ReturnUrl: "http://localhost:3000/cart/vnpay_return",
